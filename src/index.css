@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+@theme {
+  --color-zoya-cyan: #00f2ff;
+  --color-zoya-pink: #ff007a;
+  --color-zoya-purple: #7000ff;
+  --color-zoya-dark: #050505;
+}
+
+@layer base {
+  body {
+    @apply bg-zoya-dark text-white overflow-hidden;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(0, 242, 255, 0.6);
+    transform: scale(1.05);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s infinite ease-in-out;
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.waveform-bar {
+  @apply w-1 bg-zoya-cyan rounded-full;
+  transition: height 0.1s ease-in-out;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
