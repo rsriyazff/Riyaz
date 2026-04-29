@@ -12,13 +12,21 @@ export class GeminiService {
   private async ensureAi() {
     // For Veo tasks, we prefer the user-selected API key if available
     const userApiKey = localStorage.getItem('ZOYA_USER_API_KEY');
-    const selectedKey = (userApiKey && userApiKey !== '')
-      ? userApiKey
-      : ((process.env.API_KEY && process.env.API_KEY !== 'MY_GEMINI_API_KEY') 
-        ? process.env.API_KEY 
-        : ((process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY') ? process.env.GEMINI_API_KEY : ''));
+    
+    // Check various locations for the API key safely
+    let selectedKey = userApiKey || '';
+    
+    if (!selectedKey || selectedKey === 'undefined') {
+      try {
+        // @ts-ignore
+        const envKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY;
+        if (envKey && envKey !== 'MY_GEMINI_API_KEY' && envKey !== 'undefined') {
+          selectedKey = envKey;
+        }
+      } catch (e) {}
+    }
 
-    if (!selectedKey) {
+    if (!selectedKey || selectedKey === 'undefined') {
       throw new Error("No API key available. Please add GEMINI_API_KEY to Secrets in AI Studio or provide one in Zoya settings.");
     }
     
@@ -32,8 +40,8 @@ export class GeminiService {
     const ai = await this.ensureAi();
     
     try {
-      const operation = await ai.models.generateVideos({
-        model: 'veo-3.1-generate-preview',
+      const operation = await (ai as any).models.generateVideos({
+        model: 'veo-2-001', // Using stable experimental veo model
         prompt: prompt,
         image: {
           imageBytes: imagePart.data,
@@ -60,7 +68,7 @@ export class GeminiService {
 
   async getOperationStatus(operation: any) {
     const ai = await this.ensureAi();
-    return await ai.operations.getVideosOperation({ operation });
+    return await (ai as any).operations.getVideosOperation({ operation });
   }
 
   async fetchVideoBlob(uri: string) {
@@ -80,7 +88,7 @@ export class GeminiService {
   async describeImage(imageData: string, mimeType: string) {
     const ai = await this.ensureAi();
     const result = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash-exp", // Correcting futuristic placeholder to actual experimental flash model
       contents: {
         parts: [
           { inlineData: { data: imageData, mimeType } },

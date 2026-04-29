@@ -17,6 +17,7 @@ export default function ZoyaUI() {
   const [isPowerOn, setIsPowerOn] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
+  const [failedPermissionType, setFailedPermissionType] = useState<'camera' | 'screen' | 'mic' | null>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [showPreview, setShowPreview] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -111,10 +112,12 @@ export default function ZoyaUI() {
       setConnectionError(null);
     } catch (err: any) {
       console.error("Failed to start camera:", err);
-      if (err.name === 'NotAllowedError') {
-        setConnectionError("Camera access denied. Zoya needs eyes to see you! Please allow permissions.");
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setConnectionError("Listen Yaar, Zoya needs camera access to see you! Please click the 'Lock' icon in your browser address bar and set Camera to 'Allow'.");
+        setFailedPermissionType('camera');
+        setIsSyncAlertOpen(true); 
       } else {
-        setConnectionError("Zoya couldn't wake up your camera. Check the hardware connection.");
+        setConnectionError(`Arre! Zoya couldn't wake up your camera (${err.name}). Check your connection or hardware.`);
       }
     }
   };
@@ -208,6 +211,7 @@ export default function ZoyaUI() {
       screenStreamRef.current = stream;
       setIsScreenShared(true);
       setIsSidebarOpen(true);
+      setFailedPermissionType(null);
 
       stream.getVideoTracks()[0].onended = () => {
         stopScreenSync();
@@ -238,6 +242,7 @@ export default function ZoyaUI() {
 
       // If it failed because of browser policy (iframe) or missing API
       if (isIframe || err.message === "API_MISSING" || err.name === "NotAllowedError" || err.name === "SecurityError") {
+        setFailedPermissionType('screen');
         setIsSyncAlertOpen(true);
       }
     }
@@ -1055,6 +1060,8 @@ export default function ZoyaUI() {
                   const success = await audioStreamerRef.current?.startRecording();
                   if (!success) {
                     setIsMuted(true);
+                    setFailedPermissionType('mic');
+                    setIsSyncAlertOpen(true);
                   }
                 }
               }}
@@ -1244,12 +1251,18 @@ export default function ZoyaUI() {
                 
                 <div className="space-y-2">
                   <h3 className="text-2xl font-bold tracking-tight text-white">
-                    {/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? "Mobile Sync Restricted" : "Direct Connection Required"}
+                    {failedPermissionType === 'camera' ? "Camera Access Blocked" : 
+                     failedPermissionType === 'mic' ? "Microphone Restricted" :
+                     /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? "Mobile Sync Restricted" : "System Access Blocked"}
                   </h3>
                   <p className="text-white/60 text-sm leading-relaxed">
-                    {/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) 
-                      ? "\"Mobile devices don't allow deep screen sharing. Use my Camera Mode to show me your screen instead!\""
-                      : "\"Chrome requires a direct connection for screen sharing. Step out of the preview frame to initiate Visual Sync.\""}
+                    {failedPermissionType === 'camera' 
+                      ? "\"Arre listen! Zoya is blind without your camera. Please click the Lock icon in browser bar and Allow Camera.\""
+                      : failedPermissionType === 'mic'
+                      ? "\"Listen Yaar, I can't hear you! Please check your microphone permissions and make sure you hit Allow.\""
+                      : /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) 
+                        ? "\"Mobile devices don't allow deep screen sharing. Use my Camera Mode to show me your screen instead!\""
+                        : "\"Chrome requires a direct connection for deep system sync. Step out of the preview frame to initiate Visual Sync.\""}
                   </p>
                 </div>
 
@@ -1265,7 +1278,10 @@ export default function ZoyaUI() {
                     Launch in New Tab
                   </button>
                   <button
-                    onClick={() => setIsSyncAlertOpen(false)}
+                    onClick={() => {
+                      setIsSyncAlertOpen(false);
+                      setFailedPermissionType(null);
+                    }}
                     className="w-full py-4 rounded-2xl bg-white/5 text-white/40 font-bold uppercase tracking-widest text-[10px] hover:bg-white/10 transition-all underline decoration-white/10"
                   >
                     I'll stay here for now

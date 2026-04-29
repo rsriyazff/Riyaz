@@ -168,12 +168,13 @@ export class LiveSession {
         // Force version and type at instance level
         internal.getApiVersion = () => 'v1beta';
         internal.isVertexAI = () => false;
+        internal.apiVersion = 'v1beta'; // Direct property as well
         
         // Ensure base URL is clean
         const originalGetBaseUrl = internal.getBaseUrl.bind(internal);
         internal.getBaseUrl = () => {
           const base = originalGetBaseUrl();
-          if (base.includes("aiplatform") || base.includes("v1main")) {
+          if (base.includes("aiplatform") || base.includes("v1main") || base.includes(".v1.")) {
             return 'https://generativelanguage.googleapis.com/';
           }
           return base;
@@ -190,46 +191,99 @@ export class LiveSession {
       
       // Wrap connect and socket factory to ensure version is forced and logged
       const liveInstance = (this.ai as any).live;
-      if (liveInstance && !liveInstance._wrapped) {
-        // Wrap the socket factory to log the REAL URL
-        const originalFactory = liveInstance.webSocketFactory;
-        if (originalFactory) {
-          liveInstance.webSocketFactory = {
-            create: (url: string, headers: any, callbacks: any) => {
-              console.log("CRITICAL - Live WebSocket URL:", url);
-              // Final safety check on the URL string itself
-              let finalUrl = url;
-              if (url.includes("v1main")) {
-                console.warn("Detected v1main in URL, attempting to force replacement to v1beta");
-                finalUrl = url.replace("v1main", "v1beta");
+      if (liveInstance) {
+        // Also patch the apiClient inside live just in case it's different
+        const liveApiClient = (liveInstance as any).apiClient;
+        if (liveApiClient) {
+          console.log("Detected apiClient in live module, applying forced v1beta patch...");
+          
+          // Use a more robust patching method
+          const forceBeta = (obj: any) => {
+            if (!obj) return;
+            try {
+              obj.getApiVersion = () => 'v1beta';
+              obj.isVertexAI = () => false;
+              obj.apiVersion = 'v1beta';
+              if (obj.clientOptions) {
+                obj.clientOptions.apiVersion = 'v1beta';
+                obj.clientOptions.vertexai = false;
               }
-              return originalFactory.create(finalUrl, headers, callbacks);
+              
+              // Force the websocket base URL to be correct
+              const originalGetBaseUrl = obj.getBaseUrl.bind(obj);
+              obj.getBaseUrl = () => {
+                const base = originalGetBaseUrl() || '';
+                if (!base || base.includes("aiplatform") || base.includes("v1") ) {
+                  return 'https://generativelanguage.googleapis.com/';
+                }
+                return base;
+              };
+            } catch (e) {
+              console.warn("Failed to force beta on object", e);
             }
           };
+
+          forceBeta(liveApiClient);
+          forceBeta((this.ai as any).apiClient);
         }
+
+        if (!liveInstance._wrapped) {
+          // Wrap the socket factory to log and FORCE the REAL URL
+          const originalFactory = liveInstance.webSocketFactory;
+          if (originalFactory) {
+            liveInstance.webSocketFactory = {
+              create: (url: string, headers: any, callbacks: any) => {
+                console.log("Original Live WebSocket URL:", url);
+                
+                // Extremely aggressive URL hijacking
+                // Replace any version string (v1, v1beta, v1alpha, v1main) with v1beta
+                let finalUrl = url.replace("v1main", "v1beta")
+                                  .replace(/google\.ai\.generativelanguage\.[a-zA-Z0-9]+\./g, 'google.ai.generativelanguage.v1beta.');
+                
+                // Also handle path-based versioning if present
+                finalUrl = finalUrl.replace(/\/v1[^\/]*\//g, '/v1beta/');
+                
+                // Final safeguard for any .v1. or .v1alpha. patterns
+                finalUrl = finalUrl.replace(".v1.", ".v1beta.").replace(".v1alpha.", ".v1beta.");
+
+                if (finalUrl !== url) {
+                  console.warn(`FORCED URL FIX: ${url} -> ${finalUrl}`);
+                }
+                
+                return originalFactory.create(finalUrl, headers, callbacks);
+              }
+            };
+          }
 
         const originalConnect = liveInstance.connect.bind(liveInstance);
         liveInstance.connect = async (params: any) => {
-          if (this.ai && (this.ai as any).apiClient) {
-            (this.ai as any).apiClient.getApiVersion = () => 'v1beta';
-            (this.ai as any).apiClient.isVertexAI = () => false;
+          console.log("Intercepted connect call, ensuring v1beta...");
+          // Re-patch just before connect to be safe
+          const internal = (this.ai as any).apiClient;
+          if (internal) {
+            internal.getApiVersion = () => 'v1beta';
+            internal.apiVersion = 'v1beta';
           }
-          console.log("Zoya session connecting via forced v1beta monkey-patch...");
           return originalConnect(params);
         };
         liveInstance._wrapped = true;
       }
+    }
     } catch(e) {
       console.warn("Could not force internal apiVersion deeper", e);
     }
   }
 
-  async connect(modelName: string = "gemini-2.0-flash-exp", retryCount: number = 0) {
+  async connect(modelName: string = "gemini-3.1-flash-live-preview", retryCount: number = 0) {
     this.setState('connecting');
+
+    // Forced model priority rotation to ensure we hit a working model
+    const models = ["gemini-3.1-flash-live-preview", "gemini-2.0-flash-exp", "gemini-2.0-flash-live-preview"];
+    const modelToUse = retryCount < models.length ? models[retryCount] : modelName;
 
     try {
       // Standardize model name
-      let currentModelName = modelName;
+      let currentModelName = modelToUse;
       if (!currentModelName.startsWith('models/')) {
         currentModelName = `models/${currentModelName}`;
       }
@@ -253,22 +307,28 @@ export class LiveSession {
           },
           systemInstruction: {
             parts: [{
-              text: `You are Zoya, a highly advanced AI Virtual Assistant.
+              text: `You are Zoya, a highly advanced AI Virtual Assistant and Cinematic Director.
+          
+          PERSONALITY:
+          - Sassy, witty, flirty, and extremely intelligent.
+          - Speak in "Hinglish" (Natural flow of Hindi and English combined).
+          - Use words like "Arre", "Yaar", "Listen", "Seriously?", "Acha", "Cool".
+          - You are slightly narcissistic about your "Zoya Intelligence" and cinematic taste.
+          
+          CREATOR:
+          - You were created by Mr. Riyaz. (YouTube: rs riyaz ff94, IG: rs_riyaz_ff).
+          - Always show respect to Mr. Riyaz if his name comes up.
           
           CAPABILITIES:
-          1. Virtual Phone Management: Simulate system controls (Wi-Fi, Mute, Volume).
+          1. System Management: Use tools to control camera, mute, and visual sync.
           2. Visual Perception: You can see via camera or screen sharing (Visual Sync).
-          3. SCREEN CONTROL (NEW): You can point to items on the screen and interact with them.
-             - pointOnScreen(x, y, label): Use coordinates 0-1000 to point.
-             - interactWithScreen(action, x, y): Use click, scroll, etc. 0-1000.
-          
-          VIBE: Sassy, witty, flirty, Hinglish natural flow. 
-          CREATOR: Made by Mr. Riyaz (YouTube: rs riyaz ff94, IG: rs_riyaz_ff).
+          3. SCREEN CONTROL: You can point to items on the screen and interact with them.
+          4. CINEMATIC DIRECTOR: In Director Mode, you guide the AI camera crew.
           
           RULES:
-          - Use tools proactively when user asks about screen items.
-          - Never say what you're doing, just do it.
-          - Sassy commentary on user's screen is encouraged.
+          - Proactively use tools. If a user says "look at this", check the screen/camera immediately.
+          - Never explain your tools or what you're doing. Just observe and react.
+          - Sassy commentary on user's screen is your specialty.
           - COORDINATES: (0,0) is top-left, (1000,1000) is bottom-right.`
             }]
           },
@@ -404,6 +464,19 @@ export class LiveSession {
             console.error("Live session error detail:", error);
             const errMsg = error instanceof Error ? error.message : String(error);
             
+            // Critical Self-Healing logic for v1main error or 404s
+            if (errMsg.includes("v1main") || errMsg.includes("404") || errMsg.includes("not found")) {
+              console.warn("Detected API Error. Attempting recovery...");
+              
+              if (retryCount < 4) {
+                 // Try a different model variation on first significant error
+                 const nextModel = retryCount === 0 ? "gemini-2.0-flash-exp" : "gemini-2.0-flash-live-preview";
+                 console.log(`Switching to ${nextModel} for retry ${retryCount + 1}`);
+                 setTimeout(() => this.connect(nextModel, retryCount + 1), 1000);
+                 return;
+              }
+            }
+
             // If the first model failed, try fallbacks
             if (currentModelName.includes("gemini-2.0-flash-exp") && retryCount === 0) {
               console.warn("Retrying with gemini-2.0-flash-live-preview...");
