@@ -11,9 +11,15 @@ export class GeminiService {
 
   private async ensureAi() {
     // For Veo tasks, we prefer the user-selected API key if available
-    const selectedKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+    const userApiKey = localStorage.getItem('ZOYA_USER_API_KEY');
+    const selectedKey = (userApiKey && userApiKey !== '')
+      ? userApiKey
+      : ((process.env.API_KEY && process.env.API_KEY !== 'MY_GEMINI_API_KEY') 
+        ? process.env.API_KEY 
+        : ((process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY') ? process.env.GEMINI_API_KEY : ''));
+
     if (!selectedKey) {
-      throw new Error("No API key available. Please select an API key.");
+      throw new Error("No API key available. Please add GEMINI_API_KEY to Secrets in AI Studio or provide one in Zoya settings.");
     }
     
     // Always recreate the AI instance to use the most up-to-date key
@@ -27,7 +33,7 @@ export class GeminiService {
     
     try {
       const operation = await ai.models.generateVideos({
-        model: 'veo-3.1-lite-generate-preview',
+        model: 'veo-3.1-generate-preview',
         prompt: prompt,
         image: {
           imageBytes: imagePart.data,
@@ -35,7 +41,7 @@ export class GeminiService {
         },
         config: {
           numberOfVideos: 1,
-          resolution: '720p',
+          resolution: '1080p',
           aspectRatio: '16:9'
         }
       });

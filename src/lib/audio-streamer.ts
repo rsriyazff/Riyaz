@@ -10,14 +10,44 @@ export class AudioStreamer {
   private playbackQueue: Int16Array[] = [];
   private isPlaying = false;
   private nextStartTime = 0;
+  private activeSources: AudioBufferSourceNode[] = [];
 
   constructor(private onAudioData: (base64Data: string) => void) {}
 
-  async startRecording() {
-    if (this.isRecording) return;
+  async startRecording(): Promise<boolean> {
+    if (this.isRecording) return true;
 
-    this.audioContext = new AudioContext({ sampleRate: 16000 });
-    this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // Check for Secure Context / getUserMedia support
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.error("Microphone access is not supported. Please ensure you are using a secure connection (HTTPS) in a modern browser.");
+      return false;
+    }
+
+    try {
+      this.mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        } 
+      });
+    } catch (e: any) {
+      if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+         console.warn("Microphone permission denied by the user or browser.");
+      } else {
+        console.error("Failed to get audio stream:", e);
+      }
+      return false;
+    }
+
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    this.audioContext = new AudioContextClass({ sampleRate: 16000 });
+    
+    // In iOS Safari, AudioContext needs to be resumed after creation
+    if (this.audioContext.state === 'suspended') {
+      await this.audioContext.resume();
+    }
+
     this.source = this.audioContext.createMediaStreamSource(this.mediaStream);
     
     // Using ScriptProcessorNode for simplicity in this environment, 
@@ -28,13 +58,14 @@ export class AudioStreamer {
       if (!this.isRecording) return;
       const inputData = e.inputBuffer.getChannelData(0);
       const pcmData = this.float32ToInt16(inputData);
-      const base64Data = this.arrayBufferToBase64(pcmData.buffer);
+      const base64Data = this.arrayBufferToBase64(pcmData.buffer as ArrayBuffer);
       this.onAudioData(base64Data);
     };
 
     this.source.connect(this.processor);
     this.processor.connect(this.audioContext.destination);
     this.isRecording = true;
+    return true;
   }
 
   stopRecording() {
@@ -59,7 +90,8 @@ export class AudioStreamer {
 
   async playAudioChunk(base64Data: string) {
     if (!this.audioContext) {
-      this.audioContext = new AudioContext({ sampleRate: 24000 });
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      this.audioContext = new AudioContextClass({ sampleRate: 24000 });
     }
 
     const binaryString = atob(base64Data);
@@ -82,13 +114,25 @@ export class AudioStreamer {
       this.nextStartTime = currentTime;
     }
 
+    source.onended = () => {
+      this.activeSources = this.activeSources.filter(s => s !== source);
+    };
+
+    this.activeSources.push(source);
     source.start(this.nextStartTime);
     this.nextStartTime += buffer.duration;
   }
 
   stopPlayback() {
     this.nextStartTime = 0;
-    // In a more robust implementation, we'd track and stop all active sources.
+    this.activeSources.forEach(source => {
+      try {
+        source.stop();
+      } catch (e) {
+        // Source might have already ended
+      }
+    });
+    this.activeSources = [];
   }
 
   private float32ToInt16(buffer: Float32Array): Int16Array {
