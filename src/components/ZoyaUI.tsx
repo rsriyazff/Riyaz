@@ -72,6 +72,7 @@ export default function ZoyaUI() {
   const [isSyncAlertOpen, setIsSyncAlertOpen] = useState(false);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isAndroidModalOpen, setIsAndroidModalOpen] = useState(false);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
   useEffect(() => {
@@ -814,6 +815,14 @@ export default function ZoyaUI() {
               <Maximize2 className="w-4 h-4" />
             </button>
             <button
+              onClick={() => setIsAndroidModalOpen(true)}
+              className="px-3 py-1.5 rounded-lg bg-white/5 text-zoya-purple border border-zoya-purple/30 hover:bg-zoya-purple/10 transition-all flex items-center gap-2"
+              title="Android Integration Guide"
+            >
+              <Zap className="w-3 h-3" />
+              <span className="text-[9px] font-bold tracking-widest uppercase">Droid Build</span>
+            </button>
+            <button
               onClick={() => setIsInfoModalOpen(true)}
               className="p-2 rounded-lg glass-panel hover:bg-white/5 text-white/40 hover:text-zoya-cyan transition-all"
               title="Intelligence Manifest"
@@ -1285,6 +1294,171 @@ export default function ZoyaUI() {
       </AnimatePresence>
 
       {/* Right Sidebar: Visual Insights - REMOVED */}
+
+      {/* Android Architectural Manifest Modal */}
+      <AnimatePresence>
+        {isAndroidModalOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/90 backdrop-blur-3xl overflow-y-auto"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="w-full max-w-4xl bg-zoya-dark border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl my-8"
+            >
+              <div className="p-8 border-b border-white/5 flex items-center justify-between sticky top-0 bg-zoya-dark/80 backdrop-blur-md z-10">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-zoya-purple/20 rounded-2xl text-zoya-purple">
+                    <Zap className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold tracking-tight text-white">Zoya Android OS</h2>
+                    <p className="text-zoya-purple text-xs font-bold uppercase tracking-widest">Personal Voice Assistant Architect</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsAndroidModalOpen(false)}
+                  className="p-2 rounded-xl hover:bg-white/5 text-white/40 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="p-8 space-y-10 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                {/* Intro Section */}
+                <section className="space-y-4">
+                  <h3 className="text-white font-bold flex items-center gap-2">
+                    <Brain className="w-5 h-5 text-zoya-cyan" />
+                    System Architecture
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-5 bg-white/5 rounded-3xl border border-white/5 space-y-2">
+                      <p className="text-zoya-cyan text-[10px] font-bold uppercase">Wake Word</p>
+                      <p className="text-xs text-white/60">Foreground Service using Porcupine for "Hey Zoya" detection.</p>
+                    </div>
+                    <div className="p-5 bg-white/5 rounded-3xl border border-white/5 space-y-2">
+                      <p className="text-zoya-pink text-[10px] font-bold uppercase">Decision Engine</p>
+                      <p className="text-xs text-white/60">Gemini Pro API integration for intent parsing in Hinglish.</p>
+                    </div>
+                    <div className="p-5 bg-white/5 rounded-3xl border border-white/5 space-y-2">
+                      <p className="text-zoya-purple text-[10px] font-bold uppercase">Automation</p>
+                      <p className="text-xs text-white/60">Accessibility Service for screen reading and automated clicks.</p>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Core Automation Service Code */}
+                <section className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-white font-bold flex items-center gap-2">
+                      <Clapperboard className="w-5 h-5 text-zoya-purple" />
+                      Step 1: The Automation Service (Kotlin)
+                    </h3>
+                    <span className="text-[10px] text-white/40 font-mono">ZoyaAccessibilityService.kt</span>
+                  </div>
+                  <div className="p-6 bg-black/40 rounded-3xl border border-white/10 font-mono text-xs overflow-x-auto">
+                    <pre className="text-zoya-cyan/80">
+{`class ZoyaService : AccessibilityService() {
+    // This allows Zoya to click "Send" in WhatsApp
+    fun sendMessage(text: String, contact: String) {
+        // 1. Open WhatsApp intent
+        // 2. Click Search icon
+        clickByText("Search") 
+        // 3. Type contact name
+        // 4. Click result
+        // 5. Paste text into message box
+        // 6. Click "Send"
+        clickByText("Send")
+    }
+
+    private fun clickByText(text: String) {
+        rootInActiveWindow?.findAccessibilityNodeInfosByText(text)
+            ?.forEach { it.performAction(AccessibilityNodeInfo.ACTION_CLICK) }
+    }
+}`}
+                    </pre>
+                  </div>
+                  <p className="text-[10px] text-white/40 italic">Note: Use AccessibilityNodeInfo.ACTION_SCROLL_FORWARD for Reels/Shorts.</p>
+                </section>
+
+                {/* System Controls */}
+                <section className="space-y-4">
+                  <h3 className="text-white font-bold flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-zoya-pink" />
+                    Step 2: Voice Command Mapping
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-6 bg-white/5 rounded-3xl border border-white/5">
+                      <h4 className="text-[10px] font-bold text-zoya-cyan uppercase mb-4">Code: App Intents</h4>
+                      <div className="p-4 bg-black/20 rounded-2xl font-mono text-[10px] text-white/60">
+{`// Launch WhatsApp
+val waIntent = packageManager.getLaunchIntentForPackage("com.whatsapp")
+startActivity(waIntent)
+
+// Launch YouTube
+val ytIntent = packageManager.getLaunchIntentForPackage("com.google.android.youtube")
+startActivity(ytIntent)`}
+                      </div>
+                    </div>
+                    <div className="p-6 bg-white/5 rounded-3xl border border-white/5">
+                      <h4 className="text-[10px] font-bold text-zoya-pink uppercase mb-4">System Settings</h4>
+                      <div className="p-4 bg-black/20 rounded-2xl font-mono text-[10px] text-white/60">
+{`// Toggle WiFi (Needs Settings Permission)
+val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
+startActivity(intent)
+
+// Do Not Disturb
+mNotificationManager.setInterruptionFilter(
+    NotificationManager.INTERRUPTION_FILTER_NONE
+)`}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Setup & Tools */}
+                <section className="space-y-4">
+                  <h3 className="text-white font-bold">Recommended Stack</h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3 p-4 bg-zoya-cyan/10 rounded-2xl text-xs">
+                      <Monitor className="w-4 h-4 text-zoya-cyan" />
+                      <span className="text-white/80"><strong className="text-zoya-cyan">Android Studio:</strong> Language: Kotlin</span>
+                    </div>
+                    <div className="flex items-center gap-3 p-4 bg-zoya-pink/10 rounded-2xl text-xs">
+                      <Radio className="w-4 h-4 text-zoya-pink" />
+                      <span className="text-white/80"><strong className="text-zoya-pink">Porcupine SDK:</strong> Low-latency wake word detection.</span>
+                    </div>
+                    <div className="flex items-center gap-3 p-4 bg-zoya-purple/10 rounded-2xl text-xs">
+                      <Shield className="w-4 h-4 text-zoya-purple" />
+                      <span className="text-white/80"><strong className="text-zoya-purple">AutoInput:</strong> Backup for complex screen automation.</span>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Closing */}
+                <div className="p-8 bg-gradient-to-tr from-zoya-purple/20 to-zoya-cyan/20 rounded-[2rem] border border-white/10 text-center space-y-4">
+                  <h3 className="text-xl font-bold text-white italic">"Taiyaar ho, Boss? Let's build Zoya for Android."</h3>
+                  <p className="text-xs text-white/40 max-w-lg mx-auto">
+                    This architectural pattern bypasses standard limits to create a persistent, always-listening assistant capable of controlling other apps directly.
+                  </p>
+                  <div className="pt-4 flex justify-center gap-4">
+                    <div className="flex items-center gap-2 text-[10px] text-zoya-cyan font-bold uppercase tracking-widest px-4 py-2 bg-zoya-cyan/10 rounded-full border border-zoya-cyan/20">
+                      <Shield className="w-3 h-3" /> No Root Required
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-zoya-pink font-bold uppercase tracking-widest px-4 py-2 bg-zoya-pink/10 rounded-full border border-zoya-pink/20">
+                      <Zap className="w-3 h-3" /> Zero Latency
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Sync Alert Modal */}
       <AnimatePresence>
