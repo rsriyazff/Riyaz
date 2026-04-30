@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, MicOff, Power, Globe, Sparkles, Volume2, Radio, Camera, CameraOff, X, ZoomIn, ZoomOut, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Clapperboard, Play, Download, Loader2, Key, Sun, Moon, Heart, Zap, Monitor, MonitorOff, ShieldAlert, ExternalLink, SwitchCamera, Share2, Info, FileText, Shield, Brain, Image } from 'lucide-react';
+import { Mic, MicOff, Power, Globe, Sparkles, Volume2, Radio, Camera, CameraOff, X, ZoomIn, ZoomOut, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Clapperboard, Play, Download, Loader2, Key, Sun, Moon, Heart, Zap, Monitor, MonitorOff, ShieldAlert, ExternalLink, SwitchCamera, Share2, Info, FileText, Shield, Brain, Image, Maximize2 } from 'lucide-react';
 import { AudioStreamer } from '../lib/audio-streamer';
 import { LiveSession, SessionState } from '../lib/live-session';
 import { geminiService } from '../lib/gemini-service';
@@ -70,7 +70,32 @@ export default function ZoyaUI() {
   const screenStreamRef = useRef<MediaStream | null>(null);
 
   const [isSyncAlertOpen, setIsSyncAlertOpen] = useState(false);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`User response to the install prompt: ${outcome}`);
+      setDeferredPrompt(null);
+      setIsInstallModalOpen(false);
+    } else {
+      // Logic for iOS or regular browser
+      setIsInstallModalOpen(true);
+    }
+  };
 
   // Initialize AudioStreamer
   useEffect(() => {
@@ -219,7 +244,7 @@ export default function ZoyaUI() {
 
       // Notify Zoya persona about visual sync
       if (isPowerOn) {
-        console.log("Visual Sync Established.");
+        console.log("Screen Share Established.");
       }
     } catch (err: any) {
       const isIframe = window.self !== window.top;
@@ -388,12 +413,6 @@ export default function ZoyaUI() {
     } finally {
       setIsGeneratingVideo(false);
     }
-  };
-
-  const shareZoya = () => {
-    navigator.clipboard.writeText(window.location.href);
-    setConnectionError("Link for Zoya Copied Successfully! 😉");
-    setTimeout(() => setConnectionError(null), 3000);
   };
 
   const handleTogglePower = async () => {
@@ -769,6 +788,31 @@ export default function ZoyaUI() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            {/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) && (
+              <button
+                onClick={handleInstallClick}
+                className="px-3 py-1.5 rounded-lg bg-zoya-cyan/20 text-zoya-cyan border border-zoya-cyan/30 hover:bg-zoya-cyan/30 transition-all flex items-center gap-2"
+                title="Direct App System"
+              >
+                {deferredPrompt ? <Sparkles className="w-3 h-3 animate-pulse" /> : <Monitor className="w-3 h-3" />}
+                <span className="text-[9px] font-bold tracking-widest uppercase">
+                  {deferredPrompt ? 'Install App' : 'Open App'}
+                </span>
+              </button>
+            )}
+            <button
+              onClick={() => {
+                if (!document.fullscreenElement) {
+                  document.documentElement.requestFullscreen().catch(console.error);
+                } else {
+                  document.exitFullscreen().catch(console.error);
+                }
+              }}
+              className="p-2 rounded-lg glass-panel hover:bg-white/5 text-white/40 hover:text-white transition-all hidden sm:block"
+              title="Toggle Fullscreen"
+            >
+              <Maximize2 className="w-4 h-4" />
+            </button>
             <button
               onClick={() => setIsInfoModalOpen(true)}
               className="p-2 rounded-lg glass-panel hover:bg-white/5 text-white/40 hover:text-zoya-cyan transition-all"
@@ -776,14 +820,7 @@ export default function ZoyaUI() {
             >
               <Info className="w-4 h-4" />
             </button>
-            <button
-              onClick={shareZoya}
-              className="px-3 py-1.5 rounded-lg glass-panel hover:bg-white/5 text-white/40 hover:text-white transition-all flex items-center gap-2"
-              title="Share Zoya Link"
-            >
-              <Share2 className="w-3 h-3" />
-              <span className="text-[9px] font-bold tracking-widest uppercase">Share</span>
-            </button>
+
             {state === 'disconnected' && isPowerOn && (
               <button 
                 onClick={handleReconnect}
@@ -1043,11 +1080,12 @@ export default function ZoyaUI() {
             <button 
               id="shareBtn"
               onClick={() => isScreenShared ? stopScreenSync() : startScreenSync()}
-              className={`p-4 rounded-full glass-panel transition-colors ${isScreenShared ? 'text-zoya-cyan border-zoya-cyan/40' : 'text-white/20 hover:text-white/40'}`}
+              className={`p-4 rounded-full glass-panel transition-colors ${isScreenShared ? 'text-zoya-cyan border-zoya-cyan/40 shadow-[0_0_20px_rgba(0,242,255,0.2)]' : 'text-white/20 hover:text-white/60'}`}
+              title={isScreenShared ? "Stop Screen Share" : "Share Screen"}
             >
-              {isScreenShared ? <Monitor className="w-6 h-6" /> : <MonitorOff className="w-6 h-6" />}
+              {isScreenShared ? <MonitorOff className="w-6 h-6" /> : <Monitor className="w-6 h-6" />}
             </button>
-            <span className="text-[10px] uppercase tracking-widest opacity-40">Visual Sync</span>
+            <span className="text-[10px] uppercase tracking-widest opacity-40">Screen Share</span>
           </div>
 
           <div className="flex flex-col items-center gap-2">
@@ -1075,11 +1113,12 @@ export default function ZoyaUI() {
           <div className="flex flex-col items-center gap-2">
             <button 
               onClick={takeScreenshot}
-              className="p-4 rounded-full glass-panel text-white/20 hover:text-white/40 transition-colors"
+              className={`p-4 rounded-full glass-panel transition-colors ${isScreenShared || isCameraOn ? 'text-white/60 hover:text-zoya-cyan border-white/10 hover:border-zoya-cyan/40' : 'text-white/10 pointer-events-none'}`}
+              title="Manual Snapshot"
             >
-              <Download className="w-6 h-6" />
+              <Camera className="w-6 h-6" />
             </button>
-            <span className="text-[10px] uppercase tracking-widest opacity-40">Snap</span>
+            <span className="text-[10px] uppercase tracking-widest opacity-40">Snapshot</span>
           </div>
         </div>
       </div>
@@ -1102,7 +1141,7 @@ export default function ZoyaUI() {
                     <Camera className="w-4 h-4 text-zoya-cyan" />
                   )}
                   <span className="text-[10px] font-mono uppercase tracking-[0.2em] opacity-60">
-                    {isScreenShared ? 'Visual Sync' : 'Visual Input'}
+                    {isScreenShared ? 'Screen Share' : 'Visual Input'}
                   </span>
                 </div>
                 <button 
@@ -1125,6 +1164,22 @@ export default function ZoyaUI() {
                       transform: `scale(${zoom}) translate(${pan.x}%, ${pan.y}%)`,
                     }}
                   />
+                  {/* Gemini-style Snapshot Button Overlay */}
+                  {isScreenShared && (
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          takeScreenshot();
+                        }}
+                        className="pointer-events-auto flex items-center gap-2 px-4 py-2 rounded-xl bg-zoya-cyan text-black font-bold shadow-2xl hover:scale-105 active:scale-95 transition-all"
+                      >
+                        <Camera className="w-4 h-4" />
+                        <span className="text-[10px] uppercase tracking-widest">Snapshot</span>
+                      </button>
+                    </div>
+                  )}
+                  
                   <video
                     ref={videoRef}
                     autoPlay
@@ -1262,7 +1317,7 @@ export default function ZoyaUI() {
                       ? "\"Listen Yaar, I can't hear you! Please check your microphone permissions and make sure you hit Allow.\""
                       : /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) 
                         ? "\"Mobile devices don't allow deep screen sharing. Use my Camera Mode to show me your screen instead!\""
-                        : "\"Chrome requires a direct connection for deep system sync. Step out of the preview frame to initiate Visual Sync.\""}
+                        : "\"Chrome requires a direct connection for deep system sync. Step out of the preview frame to initiate Screen Share.\""}
                   </p>
                 </div>
 
@@ -1386,14 +1441,76 @@ export default function ZoyaUI() {
                       Developed by Mr. Riyaz // 2026
                     </p>
                   </div>
-                  <div className="flex gap-4">
-                     <Globe className="w-4 h-4 text-white/20" />
-                     <ShieldAlert className="w-4 h-4 text-white/20" />
-                  </div>
                 </div>
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Install / Open App Modal */}
+      <AnimatePresence>
+        {isInstallModalOpen && (
+          <div className="fixed inset-0 z-[111] flex items-center justify-center p-6 bg-black/90 backdrop-blur-3xl">
+            <motion.div
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 50, opacity: 0 }}
+              className="w-full max-w-sm bg-zoya-dark border border-white/20 rounded-[2.5rem] overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] p-10 text-center relative"
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-zoya-cyan via-zoya-pink to-zoya-purple" />
+              
+              <div className="w-20 h-20 bg-zoya-cyan/20 rounded-3xl mx-auto mb-8 flex items-center justify-center text-zoya-cyan">
+                {deferredPrompt ? <Sparkles className="w-10 h-10" /> : <Monitor className="w-10 h-10" />}
+              </div>
+              
+              <h2 className="text-3xl font-bold tracking-tight text-white mb-6">
+                {deferredPrompt ? "Install Zoya AI" : "Mobile Direct System"}
+              </h2>
+              <p className="text-white/60 text-sm leading-relaxed mb-8 px-4">
+                {deferredPrompt 
+                  ? "\"Install Zoya directly on your home screen for high-speed AI interactions and full-screen visual sync.\""
+                  : "\"Arre listen! For the best experience, install me as an app on your home screen so I can see everything better.\""}
+              </p>
+
+              <div className="space-y-3 mb-10">
+                {deferredPrompt ? (
+                  <div className="p-4 bg-zoya-cyan/10 rounded-2xl border border-zoya-cyan/20 text-left">
+                    <p className="text-[11px] text-white/80 leading-snug">
+                      Zoya is ready to be installed! Tap the button below to add her to your system applications.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5 text-left flex items-start gap-4">
+                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold shrink-0">1</div>
+                      <p className="text-[11px] text-white/80 leading-snug">Tap the <span className="text-zoya-cyan font-bold">Share</span> or <span className="text-zoya-cyan font-bold">Menu</span> button in your browser.</p>
+                    </div>
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5 text-left flex items-start gap-4">
+                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold shrink-0">2</div>
+                      <p className="text-[11px] text-white/80 leading-snug">Select <span className="text-zoya-cyan font-bold">"Add to Home Screen"</span> to save Zoya permanently.</p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={handleInstallClick}
+                  className="w-full py-5 rounded-2xl bg-zoya-cyan text-black font-black text-xs uppercase tracking-[0.2em] hover:bg-white transition-all flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(0,242,255,0.3)]"
+                >
+                  <Sparkles className="w-5 h-5" />
+                  {deferredPrompt ? 'Install Zoya' : 'Launch Direct'}
+                </button>
+                <button
+                  onClick={() => setIsInstallModalOpen(false)}
+                  className="w-full py-4 rounded-full bg-white/5 text-white/40 font-bold text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all border border-white/5"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 

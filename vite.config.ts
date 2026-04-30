@@ -14,10 +14,15 @@ export default defineConfig(({mode}) => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
         manifest: {
-          name: 'Zoya AI',
+          name: 'Zoya AI Assistant',
           short_name: 'Zoya',
-          description: 'Zoya: Your Advanced AI Companion',
+          description: 'Zoya: Your Sassy and Intelligent AI Virtual Assistant',
           theme_color: '#020617',
+          background_color: '#020617',
+          display: 'standalone',
+          orientation: 'portrait',
+          scope: '/',
+          start_url: '/',
           icons: [
             {
               src: 'pwa-192x192.png',
@@ -27,7 +32,8 @@ export default defineConfig(({mode}) => {
             {
               src: 'pwa-512x512.png',
               sizes: '512x512',
-              type: 'image/png'
+              type: 'image/png',
+              purpose: 'any maskable'
             }
           ]
         }
