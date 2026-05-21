@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, MicOff, Power, Globe, Sparkles, Volume2, Radio, Camera, CameraOff, X, ZoomIn, ZoomOut, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Clapperboard, Play, Download, Loader2, Key, Sun, Moon, Heart, Zap, Monitor, MonitorOff, ShieldAlert, ExternalLink, SwitchCamera, Share2, Info, FileText, Shield, Brain, Image, Maximize2 } from 'lucide-react';
+import { Mic, MicOff, Power, Globe, Sparkles, Volume2, Radio, Camera, CameraOff, X, ZoomIn, ZoomOut, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Clapperboard, Play, Download, Loader2, Key, Sun, Moon, Heart, Zap, Monitor, MonitorOff, ShieldAlert, ExternalLink, SwitchCamera, Share2, Info, FileText, Shield, Brain, Image, Maximize2, Code2, ShieldCheck } from 'lucide-react';
 import { AudioStreamer } from '../lib/audio-streamer';
 import { LiveSession, SessionState } from '../lib/live-session';
 import { geminiService } from '../lib/gemini-service';
@@ -1422,19 +1422,23 @@ mNotificationManager.setInterruptionFilter(
 
                 {/* Setup & Tools */}
                 <section className="space-y-4">
-                  <h3 className="text-white font-bold">Recommended Stack</h3>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3 p-4 bg-zoya-cyan/10 rounded-2xl text-xs">
-                      <Monitor className="w-4 h-4 text-zoya-cyan" />
-                      <span className="text-white/80"><strong className="text-zoya-cyan">Android Studio:</strong> Language: Kotlin</span>
+                  <h3 className="text-white font-bold text-sm">System Integration Path</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-3 p-6 bg-zoya-cyan/5 rounded-[2rem] border border-zoya-cyan/10">
+                      <div className="flex items-center gap-2 text-zoya-cyan font-bold uppercase text-[10px]">
+                        <Code2 className="w-3 h-3" /> Native Android (Kotlin)
+                      </div>
+                      <p className="text-[11px] text-white/60 leading-relaxed">
+                        I've generated the <span className="text-zoya-cyan">ZoyaAutomationService.kt</span> and <span className="text-zoya-cyan">AndroidManifest.xml</span> for you. Copy these to Android Studio to build the system as a native background service.
+                      </p>
                     </div>
-                    <div className="flex items-center gap-3 p-4 bg-zoya-pink/10 rounded-2xl text-xs">
-                      <Radio className="w-4 h-4 text-zoya-pink" />
-                      <span className="text-white/80"><strong className="text-zoya-pink">Porcupine SDK:</strong> Low-latency wake word detection.</span>
-                    </div>
-                    <div className="flex items-center gap-3 p-4 bg-zoya-purple/10 rounded-2xl text-xs">
-                      <Shield className="w-4 h-4 text-zoya-purple" />
-                      <span className="text-white/80"><strong className="text-zoya-purple">AutoInput:</strong> Backup for complex screen automation.</span>
+                    <div className="flex flex-col gap-3 p-6 bg-zoya-purple/5 rounded-[2rem] border border-zoya-purple/10">
+                      <div className="flex items-center gap-2 text-zoya-purple font-bold uppercase text-[10px]">
+                        <ShieldCheck className="w-3 h-3" /> System Control Hub
+                      </div>
+                      <p className="text-[11px] text-white/60 leading-relaxed">
+                        By using the <span className="text-zoya-purple">Accessibility Service API</span>, the Android version of Zoya can scroll your YouTube Reels and click "Send" in WhatsApp automatically.
+                      </p>
                     </div>
                   </div>
                 </section>
