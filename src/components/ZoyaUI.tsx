@@ -1429,7 +1429,7 @@ mNotificationManager.setInterruptionFilter(
                         <Code2 className="w-3 h-3" /> Native Android (Kotlin)
                       </div>
                       <p className="text-[11px] text-white/60 leading-relaxed">
-                        I've generated the <span className="text-zoya-cyan">ZoyaAutomationService.kt</span> and <span className="text-zoya-cyan">AndroidManifest.xml</span> for you. Copy these to Android Studio to build the system as a native background service.
+                        Boss, sara Android code ready hai! AI Studio ke <span className="text-white font-bold">Settings menu (top-right) se "Export as ZIP"</span> click karo. Us ZIP ko Android Studio mein open karke directly APK build kar lo.
                       </p>
                     </div>
                     <div className="flex flex-col gap-3 p-6 bg-zoya-purple/5 rounded-[2rem] border border-zoya-purple/10">
