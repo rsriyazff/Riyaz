@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, MicOff, Power, Globe, Sparkles, Volume2, Radio, Camera, CameraOff, X, ZoomIn, ZoomOut, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Clapperboard, Play, Download, Loader2, Key, Sun, Moon, Heart, Zap, Monitor, MonitorOff, ShieldAlert, ExternalLink, SwitchCamera, Share2, Info, FileText, Shield, Brain, Image, Maximize2, Code2, ShieldCheck } from 'lucide-react';
+import { Mic, MicOff, Power, Globe, Sparkles, Volume2, Radio, Camera, CameraOff, X, ZoomIn, ZoomOut, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Clapperboard, Play, Download, Loader2, Key, Sun, Moon, Heart, Zap, Monitor, MonitorOff, ShieldAlert, ExternalLink, SwitchCamera, Share2, Info, FileText, Shield, Brain, Image, Maximize2, Code2, ShieldCheck, Mail, Calendar, FileBox, LogOut } from 'lucide-react';
 import { AudioStreamer } from '../lib/audio-streamer';
 import { LiveSession, SessionState } from '../lib/live-session';
 import { geminiService } from '../lib/gemini-service';
+import { initAuth, googleSignIn, logout } from '../lib/auth';
+import { User } from 'firebase/auth';
 
 const MOODS = [
   { id: 'happy', label: 'Happy', icon: Sun, color: 'text-yellow-400' },
@@ -75,6 +77,12 @@ export default function ZoyaUI() {
   const [isAndroidModalOpen, setIsAndroidModalOpen] = useState(false);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
+  // Authentication State
+  const [needsAuth, setNeedsAuth] = useState(false);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
@@ -82,8 +90,49 @@ export default function ZoyaUI() {
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    
+    // Initialize Auth
+    const unsubscribeAuth = initAuth(
+      (user, token) => {
+        setAuthUser(user);
+        setAuthToken(token);
+        setNeedsAuth(false);
+      },
+      () => {
+        setAuthUser(null);
+        setAuthToken(null);
+        setNeedsAuth(true);
+      }
+    );
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      if (unsubscribeAuth) unsubscribeAuth();
+    };
   }, []);
+
+  const handleLogin = async () => {
+    setIsLoggingIn(true);
+    try {
+      const result = await googleSignIn();
+      if (result) {
+        setAuthToken(result.accessToken);
+        setAuthUser(result.user);
+        setNeedsAuth(false);
+      }
+    } catch (err) {
+      console.error('Login failed:', err);
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    setAuthUser(null);
+    setAuthToken(null);
+    setNeedsAuth(true);
+  };
 
   const handleInstallClick = async () => {
     if (deferredPrompt) {
@@ -789,6 +838,31 @@ export default function ZoyaUI() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            {!needsAuth ? (
+              <button
+                onClick={handleLogout}
+                className="px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30 transition-all flex items-center gap-2 group"
+                title={authUser?.email || "Connected"}
+              >
+                <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] group-hover:bg-red-500 transition-colors" />
+                <span className="text-[9px] font-bold tracking-widest uppercase">
+                  Connected
+                </span>
+                <LogOut className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity absolute right-3" />
+              </button>
+            ) : (
+              <button
+                onClick={handleLogin}
+                disabled={isLoggingIn}
+                className="px-3 py-1.5 rounded-lg bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition-all flex items-center gap-2"
+              >
+                <Globe className="w-3 h-3 text-blue-400" />
+                <span className="text-[9px] font-bold tracking-widest uppercase">
+                  {isLoggingIn ? 'Connecting...' : 'Connect Workspace'}
+                </span>
+              </button>
+            )}
+
             {/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) && (
               <button
                 onClick={handleInstallClick}
