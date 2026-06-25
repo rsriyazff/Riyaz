@@ -26,7 +26,7 @@ jobs:
           echo "No gradlew wrapper found, generating..."
           gradle wrapper --gradle-version 8.2
         fi
-        chmod +x gradlew
+        chmod +x android/gradlew
       working-directory: android
 
     - name: Build with Gradle
