@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, MicOff, Power, Globe, Sparkles, Volume2, Radio, Camera, CameraOff, X, ZoomIn, ZoomOut, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Clapperboard, Play, Download, Loader2, Key, Sun, Moon, Heart, Zap, Monitor, MonitorOff, ShieldAlert, ExternalLink, SwitchCamera, Share2, Info, FileText, Shield, Brain, Image, Maximize2, Code2, ShieldCheck, Mail, Calendar, FileBox, LogOut } from 'lucide-react';
+import { Mic, MicOff, Power, Globe, Sparkles, Volume2, Radio, Camera, CameraOff, X, ZoomIn, ZoomOut, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Clapperboard, Play, Download, Loader2, Key, Sun, Moon, Heart, Zap, Monitor, MonitorOff, ShieldAlert, ExternalLink, SwitchCamera, Share2, Info, FileText, Shield, Brain, Image, Maximize2, Code2, ShieldCheck, Mail, Calendar, FileBox, LogOut, Smartphone } from 'lucide-react';
 import { AudioStreamer } from '../lib/audio-streamer';
 import { LiveSession, SessionState } from '../lib/live-session';
 import { geminiService } from '../lib/gemini-service';
@@ -28,6 +28,7 @@ export default function ZoyaUI() {
   const [customBg, setCustomBg] = useState<string | null>(null);
   const [userApiKey, setUserApiKey] = useState<string>(() => localStorage.getItem('ZOYA_USER_API_KEY') || '');
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
+  const [isMobileBuildGuideOpen, setIsMobileBuildGuideOpen] = useState(false);
   const [tempKey, setTempKey] = useState('');
   
   const [pointer, setPointer] = useState<{ x: number, y: number, label?: string } | null>(null);
@@ -61,6 +62,15 @@ export default function ZoyaUI() {
   const [hasApiKey, setHasApiKey] = useState(false);
   const [selectedMood, setSelectedMood] = useState('energetic');
   const [isMuted, setIsMuted] = useState(false);
+
+  // New Video Generation Custom States
+  const [videoPromptText, setVideoPromptText] = useState<string>("");
+  const [videoSourceType, setVideoSourceType] = useState<'text' | 'camera' | 'upload'>('text');
+  const [videoUploadBase64, setVideoUploadBase64] = useState<string | null>(null);
+  const [videoUploadMime, setVideoUploadMime] = useState<string | null>(null);
+  const [videoAspectRatio, setVideoAspectRatio] = useState<'16:9' | '9:16'>('16:9');
+  const [videoResolution, setVideoResolution] = useState<'720p' | '1080p'>('720p');
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
 
   const audioStreamerRef = useRef<AudioStreamer | null>(null);
   const liveSessionRef = useRef<LiveSession | null>(null);
@@ -402,55 +412,83 @@ export default function ZoyaUI() {
   };
 
   const generateCinematicMoment = async () => {
-    if (!videoRef.current || !canvasRef.current) return;
-    
     setIsGeneratingVideo(true);
-    setGenerationProgress("Capturing current scene...");
+    setGenerationProgress("Starting Cinema Engine...");
     
     try {
-      // Capture high-res frame for video generation
-      const canvas = canvasRef.current;
-      const video = videoRef.current;
-      const context = canvas.getContext('2d');
-      if (!context) throw new Error("Could not get canvas context");
-      
-      canvas.width = 1920;
-      canvas.height = 1080;
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const base64Data = canvas.toDataURL('image/jpeg', 0.95).split(',')[1];
-      
-      setGenerationProgress("Identifying cinematic potential...");
-      const description = await geminiService.describeImage(base64Data, "image/jpeg");
-      
-      setGenerationProgress("Directing AI camera crew...");
-      // Constructing the prompt based on user instructions and selected mood
-      const videoPrompt = `
-        Create a masterpiece cinematic video from the given image.
-        Scene description: ${description}
-        Visuals: Ultra-high definition, 4K aesthetics, sharp details, rich textures, and professional grade color grading.
-        Motion: Add sophisticated, natural motion. Include realistic movements like a slow cinematic push-in/pull-out, gentle handheld camera breathing, and fluid subject movement.
-        Camera: 35mm film aesthetic, shallow depth of field where appropriate, smooth parallax, and dynamic perspective.
-        Lighting: Cinematic lighting with soft highlights, deep shadows, and atmospheric glow matching the mood.
-        Style: Photo-realistic cinematic masterpiece
-        Mood: ${selectedMood}
-        Duration: 6 seconds
-        Extra constraints: Professional quality, zero artifacts, consistent physics, and flawless frame-to-frame coherence.
-      `;
+      let imagePart: { data: string; mimeType: string } | null = null;
+      let finalPrompt = videoPromptText.trim();
 
-      let operation = await geminiService.generateCinematicVideo({ data: base64Data, mimeType: "image/jpeg" }, videoPrompt);
+      if (videoSourceType === 'camera') {
+        if (!videoRef.current || !canvasRef.current || !isCameraOn) {
+          throw new Error("Your camera must be turned on to capture a scene. Otherwise, please upload an image or select 'Pure Text' mode.");
+        }
+        setGenerationProgress("Capturing current scene from camera...");
+        const canvas = canvasRef.current;
+        const video = videoRef.current;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error("Could not get canvas context for snapshot");
+        
+        canvas.width = 1280;
+        canvas.height = 720;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const base64Data = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+        imagePart = { data: base64Data, mimeType: "image/jpeg" };
+      } else if (videoSourceType === 'upload') {
+        if (!videoUploadBase64) {
+          throw new Error("Please upload an image first, or choose 'Pure Text' mode to generate immediately.");
+        }
+        imagePart = { data: videoUploadBase64, mimeType: videoUploadMime || "image/jpeg" };
+      }
+
+      // If user provided no prompt but has an image, let's describe it dynamically so they don't get stuck!
+      if (!finalPrompt && imagePart) {
+        setGenerationProgress("Analyzing seed image composition...");
+        const description = await geminiService.describeImage(imagePart.data, imagePart.mimeType);
+        finalPrompt = `Create a cinematic masterpiece based on this scene description: ${description}. Ultra high quality, smooth fluid motion, professional 16:9 cinematic shot, slow zoom, perfect lighting.`;
+      }
+
+      if (!finalPrompt) {
+        throw new Error("Please type a description of what you want to generate in the text prompt area.");
+      }
+
+      setGenerationProgress("Sending directions to Zoya Studio...");
       
-      setGenerationProgress("Rendering cinematic vision...");
+      let operation = await geminiService.generateCinematicVideo(
+        finalPrompt,
+        imagePart,
+        videoAspectRatio,
+        videoResolution
+      );
+      
+      const reassuringMessages = [
+        "Connecting to Google Veo 3.1 Neural Engines...",
+        "Analyzing prompt and sketching structural frames...",
+        "Simulating light paths and volumetric shadows...",
+        "Regulating temporal stability and realistic physics...",
+        "Refining micro-details and texture enhancements...",
+        "Synthesizing motion vectors and consistent frames...",
+        "Up-scaling video streams and standardizing resolution...",
+        "Combining cinematic rendering pipelines..."
+      ];
+      
+      let progressIdx = 0;
       
       // Polling
       while (!operation.done) {
-        await new Promise(r => setTimeout(r, 5000));
+        setGenerationProgress(reassuringMessages[progressIdx % reassuringMessages.length]);
+        progressIdx++;
+        
+        await new Promise(r => setTimeout(r, 6000));
         operation = await geminiService.getOperationStatus(operation);
-        if (operation.error) throw new Error(String(operation.error.message || "Unknown generation error"));
+        if (operation.error) {
+          throw new Error(String(operation.error.message || "Unknown rendering error"));
+        }
       }
       
-      setGenerationProgress("Finalizing visuals...");
+      setGenerationProgress("Compiling and mastering final output stream...");
       const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-      if (!downloadLink) throw new Error("No video URI returned");
+      if (!downloadLink) throw new Error("Could not retrieve video download link from Veo.");
       
       const blob = await geminiService.fetchVideoBlob(downloadLink);
       const url = URL.createObjectURL(blob);
@@ -458,8 +496,8 @@ export default function ZoyaUI() {
       setGenerationProgress("");
     } catch (error: any) {
       console.error("Video generation failed:", error);
-      setGenerationProgress(`Error: ${error.message}`);
-      setTimeout(() => setGenerationProgress(""), 5000);
+      setGenerationProgress(`Rendering Interrupted: ${error.message}`);
+      setTimeout(() => setGenerationProgress(""), 7000);
     } finally {
       setIsGeneratingVideo(false);
     }
@@ -787,6 +825,125 @@ export default function ZoyaUI() {
         )}
       </AnimatePresence>
 
+      {/* Mobile Build Guide Modal */}
+      <AnimatePresence>
+        {isMobileBuildGuideOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md overflow-y-auto"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-2xl glass-panel p-6 border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto text-left"
+            >
+              <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-zoya-cyan/20 rounded-xl">
+                    <Smartphone className="w-5 h-5 text-zoya-cyan" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold uppercase tracking-wider text-white font-mono">Zoya AI APK Build Guide</h3>
+                    <p className="text-[10px] text-white/40 uppercase tracking-widest font-mono">Mobile & PC Compile Options</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsMobileBuildGuideOpen(false)} 
+                  className="p-2 hover:bg-white/5 rounded-xl transition-colors text-white/60 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Notice */}
+              <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl mb-6 text-[11px] leading-relaxed text-yellow-300/90 font-sans">
+                ⚠️ <strong>Note:</strong> Safe sandbox security rules prevent compile tools like <code>gradle</code> from running inside this live preview container. Please follow the guides below to build your APK.
+              </div>
+
+              <div className="space-y-6">
+                {/* Mobile section (No PC) */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-zoya-cyan font-bold text-xs uppercase tracking-wider font-mono">
+                    <span>📱 OPTION 1: Android Mobile Se Build Karein (No PC/Laptop)</span>
+                  </div>
+                  <div className="p-5 bg-white/5 rounded-2xl border border-white/5 space-y-4 text-xs text-white/70">
+                    <div className="space-y-2">
+                      <h4 className="font-bold text-white text-[13px] text-zoya-cyan/90">Step 1: Code Ko GitHub Par Export/Push Karein</h4>
+                      <p className="leading-relaxed pl-4 border-l-2 border-zoya-cyan/20 font-sans">
+                        Zoya UI ke top-right bar mein <strong>Settings (Gear icon)</strong> par click karein. Phir <strong>"Export to GitHub"</strong> ya push workflow use kar ke apne GitHub account se repository connect karein aur code upload kar dein.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-bold text-white text-[13px] text-zoya-cyan/90">Step 2: Auto-Build GitHub Run Shuru Hoga</h4>
+                      <p className="leading-relaxed pl-4 border-l-2 border-zoya-cyan/20 font-sans">
+                        Jaise hi code GitHub par push hoga, humara pre-configured <strong>GitHub Actions Workflow</strong> (jo humne aapke folder me `.github/workflows/android.yml` me set up kiya hai) automatic aapki secure APK build karna shuru kar dega. Apne mobile browser par GitHub repository ko open karke <strong>"Actions"</strong> tab mein check karein!
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-bold text-white text-[13px] text-zoya-cyan/90">Step 3: Direct APK Download Karein</h4>
+                      <p className="leading-relaxed pl-4 border-l-2 border-zoya-cyan/20 font-sans">
+                        Lagbhag 2-3 minute ke baad build complete hone par green checkmark aate hi <strong>Actions build</strong> par click karein. Sabse niche <strong>Artifacts</strong> section mein <strong>`zoya-ai-debug-apk`</strong> zip file milegi. Use download karke extract karein, uske andar aapko <strong>app-debug.apk</strong> mil jayega! Isko direct apne phone mein install kar lein.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* PC/Laptop Option */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-zoya-purple font-bold text-xs uppercase tracking-wider font-mono">
+                    <span>💻 OPTION 2: PC / Laptop Se Build Karein</span>
+                  </div>
+                  <div className="p-5 bg-white/5 rounded-2xl border border-white/5 space-y-4 text-xs text-white/70 font-sans">
+                    <p className="leading-relaxed">
+                      If you have access to a computer:
+                    </p>
+                    <ol className="list-decimal pl-5 space-y-2 leading-relaxed">
+                      <li>Download the project files by clicking <strong>"Download ZIP"</strong> in AI Studio's top-right Settings menu.</li>
+                      <li>Extract the downloaded folder on your computer.</li>
+                      <li>Open the <strong>"android"</strong> directory in <strong>Android Studio</strong>.</li>
+                      <li>Go to <strong>Build &gt; Build Bundle(s) / APK(s) &gt; Build APK(s)</strong>.</li>
+                      <li>Find your output file at: <code>android/app/build/outputs/apk/debug/app-debug.apk</code></li>
+                    </ol>
+                  </div>
+                </div>
+
+                {/* Termux Advanced */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-zoya-pink font-bold text-xs uppercase tracking-wider font-mono">
+                    <span>⚙️ OPTION 3: Advanced Mobile Build (Termux App)</span>
+                  </div>
+                  <div className="p-5 bg-white/5 rounded-2xl border border-white/5 text-[11px] space-y-2 font-mono text-white/60 leading-relaxed">
+                    <p>Aap Termux app play store se download karke directly apne phone console se compile kar sakte hain:</p>
+                    <div className="p-3 bg-black/60 rounded-xl border border-white/5 text-zoya-pink">
+                      pkg update && pkg upgrade -y<br/>
+                      pkg install git openjdk-17 -y<br/>
+                      termux-setup-storage<br/>
+                      cd /sdcard/Download/[unzipped_folder]/android<br/>
+                      chmod +x gradlew<br/>
+                      ./gradlew assembleDebug
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 border-t border-white/10 pt-4 flex justify-end">
+                <button
+                  onClick={() => setIsMobileBuildGuideOpen(false)}
+                  className="px-6 py-2.5 bg-zoya-cyan text-black font-bold rounded-xl hover:bg-white transition-colors uppercase tracking-wider text-[11px]"
+                >
+                  Samajh Gaya (Close)
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col items-center justify-between p-8 relative">
         {/* Header */}
@@ -888,15 +1045,14 @@ export default function ZoyaUI() {
                 <span className="text-[10px] uppercase tracking-widest font-bold">Reconnect</span>
               </button>
             )}
-            {isPowerOn && (
-              <button 
-                onClick={() => setIsDirectorMode(!isDirectorMode)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full glass-panel border transition-all ${isDirectorMode ? 'border-zoya-cyan text-zoya-cyan' : 'border-white/10 text-white/40 hover:text-white'}`}
-              >
-                <Clapperboard className="w-4 h-4" />
-                <span className="text-[10px] uppercase tracking-widest font-bold">Director Mode</span>
-              </button>
-            )}
+            <button 
+              onClick={() => setIsDirectorMode(!isDirectorMode)}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-full glass-panel border transition-all ${isDirectorMode ? 'border-zoya-cyan text-zoya-cyan font-bold bg-zoya-cyan/5' : 'border-white/10 text-white/40 hover:text-white'}`}
+              title="Toggle Cinema Studio"
+            >
+              <Clapperboard className="w-4 h-4" />
+              <span className="text-[10px] uppercase tracking-widest font-bold">Cinema Mode</span>
+            </button>
             <div className="flex items-center gap-4">
               <button 
                 onClick={() => {
@@ -1000,70 +1156,252 @@ export default function ZoyaUI() {
 
             
             {isDirectorMode ? (
-              <div className="flex flex-col items-center gap-8">
-                {!hasApiKey ? (
-                  <button
-                    onClick={handleSelectKey}
-                    className="flex items-center gap-3 px-8 py-4 rounded-full bg-zoya-cyan text-black font-bold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_0_30px_rgba(0,242,255,0.4)]"
-                  >
-                    <Key className="w-5 h-5" />
-                    Connect Studio Key
-                  </button>
-                ) : (
-                  <div className="flex flex-col items-center gap-8">
-                    {/* Mood Selector */}
-                    <div className="flex items-center gap-4 bg-white/5 p-2 rounded-2xl backdrop-blur-md border border-white/10">
-                      {MOODS.map((mood) => {
-                        const Icon = mood.icon;
-                        const isSelected = selectedMood === mood.id;
-                        return (
-                          <button
-                            key={mood.id}
-                            onClick={() => setSelectedMood(mood.id)}
-                            className={`flex flex-col items-center gap-1.5 px-4 py-2.5 rounded-xl transition-all relative ${
-                              isSelected 
-                                ? 'bg-white/10 text-white shadow-xl' 
-                                : 'text-white/40 hover:text-white/60'
-                            }`}
-                          >
-                            {isSelected && (
-                              <motion.div 
-                                layoutId="mood-bg" 
-                                className="absolute inset-0 bg-white/5 rounded-xl -z-10" 
-                              />
-                            )}
-                            <Icon className={`w-5 h-5 ${isSelected ? mood.color : ''}`} />
-                            <span className="text-[9px] uppercase tracking-wider font-bold">{mood.label}</span>
-                          </button>
-                        );
-                      })}
+              <div className="w-full max-w-xl mx-auto flex flex-col items-stretch gap-5 bg-black/50 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-2xl">
+                {/* Cinema Mode Header */}
+                <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Clapperboard className="w-5 h-5 text-zoya-cyan animate-pulse" />
+                    <div className="text-left">
+                      <h3 className="text-xs font-bold tracking-[0.1em] text-white uppercase">Zoya Cinema Hub</h3>
+                      <p className="text-[8px] font-mono text-white/30 uppercase tracking-widest">Veo 3.1 Cinema Engine</p>
                     </div>
+                  </div>
+                  {/* Inline API Key Button */}
+                  <button
+                    onClick={() => {
+                      setTempKey(userApiKey);
+                      setIsKeyModalOpen(true);
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[9px] font-mono uppercase tracking-wider transition-all ${
+                      hasApiKey 
+                        ? 'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/25' 
+                        : 'bg-zoya-cyan text-black hover:bg-white font-black border-transparent shadow-[0_0_15px_rgba(6,182,212,0.4)] animate-pulse'
+                    }`}
+                  >
+                    <Key className="w-3 h-3" />
+                    {userApiKey ? "Manage Key" : "Add Compulsory Key"}
+                  </button>
+                </div>
 
-                    {!navigator.mediaDevices?.getDisplayMedia && window.self !== window.top && (
-                      <button
-                        onClick={openInNewTab}
-                        className="flex items-center gap-2 px-6 py-3 rounded-xl bg-zoya-cyan/10 text-zoya-cyan border border-zoya-cyan/20 hover:bg-zoya-cyan/20 transition-all text-[10px] uppercase tracking-widest font-black"
-                      >
-                        <RefreshCw className="w-4 h-4" />
-                        Launch Studio in New Tab
-                      </button>
-                    )}
-
+                {/* API Key missing notification inside generator */}
+                {!hasApiKey && (
+                  <div className="bg-red-500/10 border border-red-500/10 rounded-2xl p-4 text-center space-y-3">
+                    <p className="text-xs text-red-300/80 leading-relaxed font-sans">
+                      A <span className="font-bold text-white">Google AI Studio API Key</span> is compulsory to generate high-resolution videos using Google Veo.
+                    </p>
                     <button
-                      onClick={generateCinematicMoment}
-                      disabled={isGeneratingVideo}
-                      className={`group relative flex items-center gap-3 px-10 py-5 rounded-full bg-white text-black font-black uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all shadow-2xl overflow-hidden ${isGeneratingVideo ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      onClick={() => {
+                        setTempKey(userApiKey);
+                        setIsKeyModalOpen(true);
+                      }}
+                      className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-white rounded-lg border border-red-500/30 text-[10px] font-mono uppercase tracking-widest transition-all"
                     >
-                      <div className="absolute inset-0 bg-gradient-to-r from-zoya-cyan via-zoya-pink to-zoya-purple opacity-0 group-hover:opacity-20 transition-opacity" />
-                      {isGeneratingVideo ? <Loader2 className="w-6 h-6 animate-spin" /> : <Play className="w-6 h-6 fill-current" />}
-                      Capture Cinematic Moment
+                      Enter API Key Now
                     </button>
                   </div>
                 )}
-                
-                <p className="text-[10px] font-mono text-white/30 uppercase tracking-[0.2em]">
-                  {hasApiKey ? "Veo-3.1 Lite Cinema Engine Ready" : "Paid API Key Required for Video Generation"}
-                </p>
+
+                {hasApiKey && (
+                  <div className="space-y-4 text-left">
+                    {/* Prompt input */}
+                    <div className="space-y-2">
+                      <label className="text-[9px] font-mono text-white/40 uppercase tracking-widest block">Cinema Prompt Description</label>
+                      <textarea
+                        value={videoPromptText}
+                        onChange={(e) => setVideoPromptText(e.target.value)}
+                        placeholder="Describe your cinematic masterpiece... (e.g. A neon cyberpunk cat driving at high speed in interstellar space, 4k drone shot)"
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs focus:border-zoya-cyan outline-none transition-colors min-h-[70px] text-white resize-none"
+                      />
+                      
+                      {/* Presets Grid */}
+                      <div className="space-y-1.5">
+                        <span className="text-[8px] font-mono text-white/30 uppercase tracking-widest">Cinematic Suggestions:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {[
+                            { name: "Cyberpunk", text: "A futuristic glowing holographic cat driving a hyper-detailed motorbike in neon Tokyo streets, rain cinematic reflection, volumetric particles, 4k" },
+                            { name: "Ocean Sunset", text: "Slow motion epic drone capture of massive ocean waves crushing against volcano cliffs at sunset, realistic physics, spray particles, atmospheric golden hour" },
+                            { name: "Futuristic Space", text: "Massive spaceship hyperspeed travel through asteroid fields, nebula gas explosion in deep space, professional sci-fi, dynamic motion, 4k" },
+                            { name: "Nostalgic Cafe", text: "Cozy coffee shop window with rain droplets falling down the glass, coffee cup steaming, golden sunlight casting long moody reflections, film look" }
+                          ].map((preset, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setVideoPromptText(preset.text)}
+                              className="px-2 py-0.5 bg-white/5 hover:bg-white/10 text-white/40 hover:text-white rounded text-[8px] border border-white/5 font-mono transition-colors"
+                            >
+                              + {preset.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Reference Seed Mode Selector */}
+                    <div className="space-y-2">
+                      <label className="text-[9px] font-mono text-white/40 uppercase tracking-widest block">Starting Seed Frame</label>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {[
+                          { id: 'text', label: "Pure Text", desc: "Veo Prompt only" },
+                          { id: 'camera', label: "Camera", desc: "Freeze Snap" },
+                          { id: 'upload', label: "Upload Image", desc: "Pick PNG/JPG" }
+                        ].map((source) => (
+                          <button
+                            key={source.id}
+                            type="button"
+                            onClick={() => setVideoSourceType(source.id as any)}
+                            className={`p-1.5 rounded-xl border text-center transition-all ${
+                              videoSourceType === source.id 
+                                ? 'bg-zoya-cyan/10 text-zoya-cyan border-zoya-cyan/40 shadow-[0_0_10px_rgba(0,242,255,0.05)]' 
+                                : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
+                            }`}
+                          >
+                            <div className="text-[9px] font-bold uppercase tracking-wider">{source.label}</div>
+                            <div className="text-[7px] opacity-40 font-mono mt-0.5 whitespace-nowrap">{source.desc}</div>
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Display according to source type */}
+                      {videoSourceType === 'camera' && (
+                        <div className="p-2.5 bg-white/5 border border-white/10 rounded-xl text-center space-y-2">
+                          <p className="text-[9px] text-white/50">
+                            {isCameraOn 
+                              ? "✔ Live webcam active! Fast snap of the scene will be taken as starting reference." 
+                              : "⚠️ Turn on camera in footer to capture snapshot seed."}
+                          </p>
+                          {!isCameraOn && (
+                            <button
+                              type="button"
+                              onClick={() => startCamera()}
+                              className="px-2 py-0.5 bg-zoya-cyan/15 text-zoya-cyan rounded border border-zoya-cyan/20 text-[8px] font-mono uppercase hover:bg-zoya-cyan/25 transition-colors"
+                            >
+                              Activate Camera
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {videoSourceType === 'upload' && (
+                        <div className="space-y-2">
+                          <input
+                            type="file"
+                            ref={videoFileInputRef}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  setVideoUploadBase64((reader.result as string).split(',')[1]);
+                                  setVideoUploadMime(file.type);
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                            accept="image/*"
+                            className="hidden"
+                          />
+                          {videoUploadBase64 ? (
+                            <div className="relative rounded-xl overflow-hidden border border-white/10 aspect-video group bg-black/60 max-h-[110px] flex items-center justify-center">
+                              <img
+                                src={`data:${videoUploadMime || 'image/jpeg'};base64,${videoUploadBase64}`}
+                                className="w-full h-full object-cover"
+                                referrerPolicy="no-referrer"
+                              />
+                              <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => videoFileInputRef.current?.click()}
+                                  className="px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-[8px] uppercase font-bold border border-white/10"
+                                >
+                                  Replace
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setVideoUploadBase64(null);
+                                    setVideoUploadMime(null);
+                                  }}
+                                  className="px-2 py-1 bg-red-500/20 hover:bg-red-500/40 rounded text-red-300 text-[8px] uppercase font-bold border border-red-500/20"
+                                >
+                                  Clear
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => videoFileInputRef.current?.click()}
+                              className="w-full p-4 bg-white/5 border border-dashed border-white/10 hover:border-zoya-cyan rounded-xl flex flex-col items-center justify-center gap-1 text-white/30 hover:text-white/60 transition-all group pointer-events-auto"
+                            >
+                              <Image className="w-4 h-4 group-hover:scale-110 transition-transform text-white/40 group-hover:text-zoya-cyan" />
+                              <span className="text-[8px] font-mono uppercase tracking-wider">Select Reference Image (PNG/JPG)</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Controls Grid */}
+                    <div className="grid grid-cols-2 gap-3 pb-1">
+                      {/* Aspect Ratio */}
+                      <div className="space-y-1">
+                        <label className="text-[8px] font-mono text-white/40 uppercase tracking-widest block">Aspect Ratio</label>
+                        <div className="flex gap-1.5">
+                          {['16:9', '9:16'].map((ratio) => (
+                            <button
+                              key={ratio}
+                              type="button"
+                              onClick={() => setVideoAspectRatio(ratio as any)}
+                              className={`flex-1 py-1 rounded-lg border text-[8px] font-mono tracking-wider transition-all ${
+                                videoAspectRatio === ratio 
+                                  ? 'bg-white/10 text-white border-white/20 font-bold' 
+                                  : 'bg-black/20 border-white/5 text-white/40 hover:text-white/60'
+                              }`}
+                            >
+                              {ratio === '16:9' ? "16:9 Landscape" : "9:16 Portrait"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Resolution */}
+                      <div className="space-y-1">
+                        <label className="text-[8px] font-mono text-white/40 uppercase tracking-widest block">Resolution</label>
+                        <div className="flex gap-1.5">
+                          {['720p', '1080p'].map((res) => (
+                            <button
+                              key={res}
+                              type="button"
+                              onClick={() => setVideoResolution(res as any)}
+                              className={`flex-1 py-1 rounded-lg border text-[8px] font-mono tracking-wider transition-all ${
+                                videoResolution === res 
+                                  ? 'bg-white/10 text-white border-white/20 font-bold' 
+                                  : 'bg-black/20 border-white/5 text-white/40 hover:text-white/60'
+                              }`}
+                            >
+                              {res} {res === '720p' ? '(Fast)' : '(Crisp)'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action button inside card */}
+                    <button
+                      onClick={generateCinematicMoment}
+                      disabled={isGeneratingVideo}
+                      className={`w-full py-3.5 rounded-xl font-bold uppercase tracking-[0.15em] text-[10px] transition-all flex items-center justify-center gap-2 relative overflow-hidden ${
+                        isGeneratingVideo 
+                          ? 'bg-white/10 text-white/30 cursor-not-allowed border border-white/5' 
+                          : 'bg-white text-black hover:scale-[1.01] active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-zoya-cyan/10 hover:border-zoya-cyan'
+                      }`}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-zoya-cyan via-zoya-pink to-zoya-purple opacity-0 hover:opacity-10 transition-opacity" />
+                      {isGeneratingVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+                      Generate AI Video
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="relative">
@@ -1480,6 +1818,12 @@ mNotificationManager.setInterruptionFilter(
                       <p className="text-[11px] text-white/60 leading-relaxed">
                         Boss, sara Android code ready hai! AI Studio ke <span className="text-white font-bold">Settings menu (top-right) se "Export as ZIP"</span> click karo. Us ZIP ko Android Studio mein open karke directly APK build kar lo.
                       </p>
+                      <button
+                        onClick={() => setIsMobileBuildGuideOpen(true)}
+                        className="mt-2 w-full py-2.5 rounded-xl bg-zoya-cyan/20 border border-zoya-cyan/30 text-zoya-cyan text-[10px] font-bold uppercase tracking-widest hover:bg-zoya-cyan/35 transition-all text-center font-mono"
+                      >
+                        📱 APK Build Guide (Hindi/Eng)
+                      </button>
                     </div>
                     <div className="flex flex-col gap-3 p-6 bg-zoya-purple/5 rounded-[2rem] border border-zoya-purple/10">
                       <div className="flex items-center gap-2 text-zoya-purple font-bold uppercase text-[10px]">

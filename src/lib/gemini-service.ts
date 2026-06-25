@@ -36,24 +36,33 @@ export class GeminiService {
     return this.ai;
   }
 
-  async generateCinematicVideo(imagePart: { data: string; mimeType: string }, prompt: string) {
+  async generateCinematicVideo(
+    prompt: string,
+    imagePart?: { data: string; mimeType: string } | null,
+    aspectRatio: string = '16:9',
+    resolution: string = '1080p'
+  ) {
     const ai = await this.ensureAi();
     
     try {
-      const operation = await (ai as any).models.generateVideos({
-        model: 'veo-2-001', // Using stable experimental veo model
+      const payload: any = {
+        model: 'veo-3.1-lite-generate-preview',
         prompt: prompt,
-        image: {
-          imageBytes: imagePart.data,
-          mimeType: imagePart.mimeType,
-        },
         config: {
           numberOfVideos: 1,
-          resolution: '1080p',
-          aspectRatio: '16:9'
+          resolution: resolution,
+          aspectRatio: aspectRatio
         }
-      });
+      };
 
+      if (imagePart && imagePart.data) {
+        payload.image = {
+          imageBytes: imagePart.data,
+          mimeType: imagePart.mimeType,
+        };
+      }
+
+      const operation = await (ai as any).models.generateVideos(payload);
       return operation;
     } catch (error: any) {
       if (error.message?.includes("Requested entity was not found")) {
