@@ -27,7 +27,7 @@ jobs:
           gradle wrapper --gradle-version 8.2
         fi
         chmod +x /gradlew
-      working-directory: .
+      working-directory: android
 
     - name: Build with Gradle
       run: ./gradlew assembleDebug
