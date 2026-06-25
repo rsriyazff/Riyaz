@@ -1021,12 +1021,12 @@ export default function ZoyaUI() {
               <Maximize2 className="w-4 h-4" />
             </button>
             <button
-              onClick={() => setIsAndroidModalOpen(true)}
-              className="px-3 py-1.5 rounded-lg bg-white/5 text-zoya-purple border border-zoya-purple/30 hover:bg-zoya-purple/10 transition-all flex items-center gap-2"
-              title="Android Integration Guide"
+              onClick={() => setIsMobileBuildGuideOpen(true)}
+              className="px-3 py-1.5 rounded-lg bg-white/5 text-zoya-cyan border border-zoya-cyan/30 hover:bg-zoya-cyan/10 transition-all flex items-center gap-2"
+              title="APK Build Guide for Android Mobile"
             >
-              <Zap className="w-3 h-3" />
-              <span className="text-[9px] font-bold tracking-widest uppercase">Droid Build</span>
+              <Smartphone className="w-3.5 h-3.5 text-zoya-cyan animate-pulse" />
+              <span className="text-[9px] font-bold tracking-widest uppercase text-white">Get APK Guide</span>
             </button>
             <button
               onClick={() => setIsInfoModalOpen(true)}
