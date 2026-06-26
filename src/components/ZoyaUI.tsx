@@ -678,7 +678,7 @@ export default function ZoyaUI() {
   };
 
   return (
-    <div className="relative h-screen w-full flex flex-col items-stretch justify-between bg-zoya-dark overflow-hidden">
+    <div className="relative h-full w-full flex flex-col items-stretch justify-between bg-zoya-dark overflow-hidden">
       <input 
         type="file" 
         ref={fileInputRef} 
