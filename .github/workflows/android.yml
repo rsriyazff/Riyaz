@@ -20,15 +20,13 @@ jobs:
         java-version: '17'
         cache: 'gradle'
 
-    - name: Set up Gradle Wrapper
-      run: |
-        echo "Creating/updating Gradle wrapper to ensure gradle-wrapper.jar is present..."
-        gradle wrapper --gradle-version 8.2
-        chmod +x gradlew
-      working-directory: android
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+      with:
+        gradle-version: '8.2'
 
     - name: Build with Gradle
-      run: ./gradlew assembleDebug --stacktrace
+      run: gradle assembleDebug --stacktrace
       working-directory: android
 
     - name: Upload APK Artifact
