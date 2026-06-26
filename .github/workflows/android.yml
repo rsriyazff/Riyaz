@@ -20,12 +20,10 @@ jobs:
         java-version: '17'
         cache: 'gradle'
 
-    - name: Grant execute permission for gradlew
+    - name: Set up Gradle Wrapper
       run: |
-        if [ ! -f "gradlew" ]; then
-          echo "No gradlew wrapper found, downloading from official Gradle repository..."
-          curl -sL https://raw.githubusercontent.com/gradle/gradle/v8.2.0/gradlew -o gradlew
-        fi
+        echo "Creating/updating Gradle wrapper to ensure gradle-wrapper.jar is present..."
+        gradle wrapper --gradle-version 8.2
         chmod +x gradlew
       working-directory: android
 
