@@ -13,7 +13,7 @@ class ZoyaVoiceService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Keep service alive to process voice assistant streams
-        return START_STICKY
+        return Service.START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? {
