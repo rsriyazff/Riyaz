@@ -825,124 +825,7 @@ export default function ZoyaUI() {
         )}
       </AnimatePresence>
 
-      {/* Mobile Build Guide Modal */}
-      <AnimatePresence>
-        {isMobileBuildGuideOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md overflow-y-auto"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-2xl glass-panel p-6 border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto text-left"
-            >
-              <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-zoya-cyan/20 rounded-xl">
-                    <Smartphone className="w-5 h-5 text-zoya-cyan" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold uppercase tracking-wider text-white font-mono">Zoya AI APK Build Guide</h3>
-                    <p className="text-[10px] text-white/40 uppercase tracking-widest font-mono">Mobile & PC Compile Options</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setIsMobileBuildGuideOpen(false)} 
-                  className="p-2 hover:bg-white/5 rounded-xl transition-colors text-white/60 hover:text-white"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
 
-              {/* Notice */}
-              <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl mb-6 text-[11px] leading-relaxed text-yellow-300/90 font-sans">
-                ⚠️ <strong>Note:</strong> Safe sandbox security rules prevent compile tools like <code>gradle</code> from running inside this live preview container. Please follow the guides below to build your APK.
-              </div>
-
-              <div className="space-y-6">
-                {/* Mobile section (No PC) */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-zoya-cyan font-bold text-xs uppercase tracking-wider font-mono">
-                    <span>📱 OPTION 1: Android Mobile Se Build Karein (No PC/Laptop)</span>
-                  </div>
-                  <div className="p-5 bg-white/5 rounded-2xl border border-white/5 space-y-4 text-xs text-white/70">
-                    <div className="space-y-2">
-                      <h4 className="font-bold text-white text-[13px] text-zoya-cyan/90">Step 1: Code Ko GitHub Par Export/Push Karein</h4>
-                      <p className="leading-relaxed pl-4 border-l-2 border-zoya-cyan/20 font-sans">
-                        Zoya UI ke top-right bar mein <strong>Settings (Gear icon)</strong> par click karein. Phir <strong>"Export to GitHub"</strong> ya push workflow use kar ke apne GitHub account se repository connect karein aur code upload kar dein.
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <h4 className="font-bold text-white text-[13px] text-zoya-cyan/90">Step 2: Auto-Build GitHub Run Shuru Hoga</h4>
-                      <p className="leading-relaxed pl-4 border-l-2 border-zoya-cyan/20 font-sans">
-                        Jaise hi code GitHub par push hoga, humara pre-configured <strong>GitHub Actions Workflow</strong> (jo humne aapke folder me `.github/workflows/android.yml` me set up kiya hai) automatic aapki secure APK build karna shuru kar dega. Apne mobile browser par GitHub repository ko open karke <strong>"Actions"</strong> tab mein check karein!
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <h4 className="font-bold text-white text-[13px] text-zoya-cyan/90">Step 3: Direct APK Download Karein</h4>
-                      <p className="leading-relaxed pl-4 border-l-2 border-zoya-cyan/20 font-sans">
-                        Lagbhag 2-3 minute ke baad build complete hone par green checkmark aate hi <strong>Actions build</strong> par click karein. Sabse niche <strong>Artifacts</strong> section mein <strong>`zoya-ai-debug-apk`</strong> zip file milegi. Use download karke extract karein, uske andar aapko <strong>app-debug.apk</strong> mil jayega! Isko direct apne phone mein install kar lein.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* PC/Laptop Option */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-zoya-purple font-bold text-xs uppercase tracking-wider font-mono">
-                    <span>💻 OPTION 2: PC / Laptop Se Build Karein</span>
-                  </div>
-                  <div className="p-5 bg-white/5 rounded-2xl border border-white/5 space-y-4 text-xs text-white/70 font-sans">
-                    <p className="leading-relaxed">
-                      If you have access to a computer:
-                    </p>
-                    <ol className="list-decimal pl-5 space-y-2 leading-relaxed">
-                      <li>Download the project files by clicking <strong>"Download ZIP"</strong> in AI Studio's top-right Settings menu.</li>
-                      <li>Extract the downloaded folder on your computer.</li>
-                      <li>Open the <strong>"android"</strong> directory in <strong>Android Studio</strong>.</li>
-                      <li>Go to <strong>Build &gt; Build Bundle(s) / APK(s) &gt; Build APK(s)</strong>.</li>
-                      <li>Find your output file at: <code>android/app/build/outputs/apk/debug/app-debug.apk</code></li>
-                    </ol>
-                  </div>
-                </div>
-
-                {/* Termux Advanced */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-zoya-pink font-bold text-xs uppercase tracking-wider font-mono">
-                    <span>⚙️ OPTION 3: Advanced Mobile Build (Termux App)</span>
-                  </div>
-                  <div className="p-5 bg-white/5 rounded-2xl border border-white/5 text-[11px] space-y-2 font-mono text-white/60 leading-relaxed">
-                    <p>Aap Termux app play store se download karke directly apne phone console se compile kar sakte hain:</p>
-                    <div className="p-3 bg-black/60 rounded-xl border border-white/5 text-zoya-pink">
-                      pkg update && pkg upgrade -y<br/>
-                      pkg install git openjdk-17 -y<br/>
-                      termux-setup-storage<br/>
-                      cd /sdcard/Download/[unzipped_folder]/android<br/>
-                      chmod +x gradlew<br/>
-                      ./gradlew assembleDebug
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-8 border-t border-white/10 pt-4 flex justify-end">
-                <button
-                  onClick={() => setIsMobileBuildGuideOpen(false)}
-                  className="px-6 py-2.5 bg-zoya-cyan text-black font-bold rounded-xl hover:bg-white transition-colors uppercase tracking-wider text-[11px]"
-                >
-                  Samajh Gaya (Close)
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col items-center justify-between p-8 relative">
@@ -1021,14 +904,6 @@ export default function ZoyaUI() {
               <Maximize2 className="w-4 h-4" />
             </button>
             <button
-              onClick={() => setIsMobileBuildGuideOpen(true)}
-              className="px-3 py-1.5 rounded-lg bg-white/5 text-zoya-cyan border border-zoya-cyan/30 hover:bg-zoya-cyan/10 transition-all flex items-center gap-2"
-              title="APK Build Guide for Android Mobile"
-            >
-              <Smartphone className="w-3.5 h-3.5 text-zoya-cyan animate-pulse" />
-              <span className="text-[9px] font-bold tracking-widest uppercase text-white">Get APK Guide</span>
-            </button>
-            <button
               onClick={() => setIsInfoModalOpen(true)}
               className="p-2 rounded-lg glass-panel hover:bg-white/5 text-white/40 hover:text-zoya-cyan transition-all"
               title="Intelligence Manifest"
@@ -1045,14 +920,6 @@ export default function ZoyaUI() {
                 <span className="text-[10px] uppercase tracking-widest font-bold">Reconnect</span>
               </button>
             )}
-            <button 
-              onClick={() => setIsDirectorMode(!isDirectorMode)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-full glass-panel border transition-all ${isDirectorMode ? 'border-zoya-cyan text-zoya-cyan font-bold bg-zoya-cyan/5' : 'border-white/10 text-white/40 hover:text-white'}`}
-              title="Toggle Cinema Studio"
-            >
-              <Clapperboard className="w-4 h-4" />
-              <span className="text-[10px] uppercase tracking-widest font-bold">Cinema Mode</span>
-            </button>
             <div className="flex items-center gap-4">
               <button 
                 onClick={() => {
@@ -1818,12 +1685,6 @@ mNotificationManager.setInterruptionFilter(
                       <p className="text-[11px] text-white/60 leading-relaxed">
                         Boss, sara Android code ready hai! AI Studio ke <span className="text-white font-bold">Settings menu (top-right) se "Export as ZIP"</span> click karo. Us ZIP ko Android Studio mein open karke directly APK build kar lo.
                       </p>
-                      <button
-                        onClick={() => setIsMobileBuildGuideOpen(true)}
-                        className="mt-2 w-full py-2.5 rounded-xl bg-zoya-cyan/20 border border-zoya-cyan/30 text-zoya-cyan text-[10px] font-bold uppercase tracking-widest hover:bg-zoya-cyan/35 transition-all text-center font-mono"
-                      >
-                        📱 APK Build Guide (Hindi/Eng)
-                      </button>
                     </div>
                     <div className="flex flex-col gap-3 p-6 bg-zoya-purple/5 rounded-[2rem] border border-zoya-purple/10">
                       <div className="flex items-center gap-2 text-zoya-purple font-bold uppercase text-[10px]">
